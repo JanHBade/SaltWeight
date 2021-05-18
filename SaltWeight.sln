@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30204.135
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SaltWeight", "SaltWeight\SaltWeight.vcxproj", "{C5F80730-F44F-4478-BDAE-6634EFC2CA88}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Calib", "Calib\Calib.vcxproj", "{0C690C24-DF78-49FD-9E77-47567D7385C3}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestAutoC", "TestAutoC\TestAutoC.vcxproj", "{1E23BB1F-7869-4523-ABF2-87970A836F2E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x86 = Debug|x86
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|x86.ActiveCfg = Debug|Win32
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|x86.Build.0 = Debug|Win32
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|x86.ActiveCfg = Release|Win32
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|x86.Build.0 = Release|Win32
+		{0C690C24-DF78-49FD-9E77-47567D7385C3}.Debug|x86.ActiveCfg = Debug|Win32
+		{0C690C24-DF78-49FD-9E77-47567D7385C3}.Debug|x86.Build.0 = Debug|Win32
+		{0C690C24-DF78-49FD-9E77-47567D7385C3}.Release|x86.ActiveCfg = Release|Win32
+		{0C690C24-DF78-49FD-9E77-47567D7385C3}.Release|x86.Build.0 = Release|Win32
+		{1E23BB1F-7869-4523-ABF2-87970A836F2E}.Debug|x86.ActiveCfg = Debug|Win32
+		{1E23BB1F-7869-4523-ABF2-87970A836F2E}.Debug|x86.Build.0 = Debug|Win32
+		{1E23BB1F-7869-4523-ABF2-87970A836F2E}.Release|x86.ActiveCfg = Release|Win32
+		{1E23BB1F-7869-4523-ABF2-87970A836F2E}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C91CEA0A-1DA0-4119-B6A9-FD2CC34190BC}
+	EndGlobalSection
+EndGlobal
