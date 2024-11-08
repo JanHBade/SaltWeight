@@ -36,18 +36,12 @@ static const char Settings_Page[] PROGMEM = R"(
 {
   "uri": "/settings",
   "title": "Einstellungen",
-  "menu": false,
-  "element": [
+  "menu": true,
+  "element": [    
     {
-      "name": "Tara",
-      "type": "ACCheckbox",
-      "label": "Tara",
-      "checked": false
-    },
-    {
-      "name": "Offset",
+      "name": "Grenze",
       "type": "ACInput",
-      "label": "Offset" 
+      "label": "Grenze" 
     },
     {
       "name": "apply",
@@ -195,8 +189,10 @@ void setup()
     }
 
     ws2812fx.init();
-    ws2812fx.setBrightness(255);
-    ws2812fx.setSpeed(5);
+    // Set the LED’s overall brightness. 0=strip off, 255=strip at full intensity
+    ws2812fx.setBrightness(128);
+    // Set the animation speed. 10=very fast, 5000=very slow
+    ws2812fx.setSpeed(100);
     ws2812fx.setMode(FX_MODE_BREATH);
     ws2812fx.setColor(0, 0, 255);
     ws2812fx.start();
@@ -226,28 +222,28 @@ void loop()
 {
     if (EnvSensorAktiv)
     {
-        Values.Temp = bme.readTemperature();
-        Values.Hum = bme.readHumidity();
-        Values.Pres = bme.readPressure() / 100.0;
+        float buf  = bme.readTemperature();
+        Values.Temp = 0.8 * Values.Temp + 0.2 * buf;
+        Values.Hum = 0.8 * Values.Hum + 0.2 * bme.readHumidity();
+        Values.Pres = 0.8 * Values.Pres + 0.2 * (bme.readPressure() / 100.0);
 
-        Values.Distance = distanceSensor.measureDistanceCm(Values.Temp);
+        Values.Distance = 0.8 * Values.Distance + 0.2 * distanceSensor.measureDistanceCm(buf);
     }
     else
-        Values.Distance = distanceSensor.measureDistanceCm();
+        Values.Distance = 0.8 * Values.Distance + 0.2 * distanceSensor.measureDistanceCm();
 
-    /*if (Values.Weight < 5)
+    if (Values.Distance > 50)
     {
         ws2812fx.setColor(255, 0, 0);
     }
-    else if (Values.Weight > 100)
+    else if (Values.Distance < 10)
     {
         ws2812fx.setColor(0, 0, 255);
     }
     else
     {
         ws2812fx.setColor(0, 255, 0);
-    }*/
-    ws2812fx.setColor(0, 255, 0);
+    }
 
     if (WiFi.status() == WL_CONNECTED)
     {
