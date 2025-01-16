@@ -19,6 +19,8 @@ WS2812FX ws2812fx = WS2812FX(NUMPIXELS, LEDPIN, NEO_GRB + NEO_KHZ800);
 #define TRGPIN 14
 #define ECHOPIN 12
 UltraSonicDistanceSensor distanceSensor(TRGPIN, ECHOPIN, 200);
+float DistanceContainerEmpty = 44;
+float DistanceHysteresis = 3;
 
 #include <ESP8266Wifi.h>
 #include <ESP8266Webserver.h>
@@ -88,7 +90,8 @@ void rootPage() {
     String  content =
         "<html>"
         "<head>"
-        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"        
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+        "<title>SaltWeight</title>"        
         "</head>"
         "<body>"
         "<h2 align=\"center\" style=\"color:#{color};margin:20px;\">Salt Weight</h2>"
@@ -186,6 +189,12 @@ void setup()
         Serial.print("   ID of 0x56-0x58 represents a BMP 280,\n");
         Serial.print("        ID of 0x60 represents a BME 280.\n");
         Serial.print("        ID of 0x61 represents a BME 680.\n");
+
+        Values.Temp = bme.readTemperature();
+        Values.Hum = bme.readHumidity();
+        Values.Pres = (bme.readPressure() / 100.0);
+
+        Values.Distance =  distanceSensor.measureDistanceCm(Values.Temp);
     }
 
     ws2812fx.init();
@@ -232,17 +241,17 @@ void loop()
     else
         Values.Distance = 0.8 * Values.Distance + 0.2 * distanceSensor.measureDistanceCm();
 
-    if (Values.Distance > 50)
+    if (Values.Distance < 10)
     {
-        ws2812fx.setColor(255, 0, 0);
+        ws2812fx.setColor(0, 0, 255);   //Blau -> Fehlmessung        
     }
-    else if (Values.Distance < 10)
+    else if (Values.Distance > (DistanceContainerEmpty + DistanceHysteresis))
     {
-        ws2812fx.setColor(0, 0, 255);
+        ws2812fx.setColor(255, 0, 0);   //Rot -> zuwenig Salz drin
     }
-    else
+    else if (Values.Distance < (DistanceContainerEmpty - DistanceHysteresis))
     {
-        ws2812fx.setColor(0, 255, 0);
+        ws2812fx.setColor(0, 255, 0);   //Grün alles okay
     }
 
     if (WiFi.status() == WL_CONNECTED)
