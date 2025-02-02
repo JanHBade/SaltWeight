@@ -199,9 +199,7 @@ void setup()
 
     ws2812fx.init();
     // Set the LED’s overall brightness. 0=strip off, 255=strip at full intensity
-    ws2812fx.setBrightness(128);
-    // Set the animation speed. 10=very fast, 5000=very slow
-    ws2812fx.setSpeed(100);
+    ws2812fx.setBrightness(32);
     ws2812fx.setMode(FX_MODE_BREATH);
     ws2812fx.setColor(0, 0, 255);
     ws2812fx.start();
