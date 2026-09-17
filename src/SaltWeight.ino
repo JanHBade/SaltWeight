@@ -19,46 +19,15 @@ WS2812FX ws2812fx = WS2812FX(NUMPIXELS, LEDPIN, NEO_GRB + NEO_KHZ800);
 #define TRGPIN 14
 #define ECHOPIN 12
 UltraSonicDistanceSensor distanceSensor(TRGPIN, ECHOPIN, 200);
-float DistanceContainerEmpty = 44;
+float DistanceContainerEmpty = 35;
 float DistanceHysteresis = 3;
 
 #include <ESP8266Wifi.h>
 #include <ESP8266Webserver.h>
-#include <AutoConnect.h>
+ESP8266WebServer Server;
 #define HOSTNAME "SaltWeight"
 
 #include "gitrevision.h"
-
-ESP8266WebServer Server;
-AutoConnect Portal(Server);
-AutoConnectConfig Config;
-AutoConnectAux  Settings;
-
-static const char Settings_Page[] PROGMEM = R"(
-{
-  "uri": "/settings",
-  "title": "Einstellungen",
-  "menu": true,
-  "element": [    
-    {
-      "name": "Grenze",
-      "type": "ACInput",
-      "label": "Grenze" 
-    },
-    {
-      "name": "apply",
-      "type": "ACSubmit",
-      "value": "&#220;bernehmen",
-      "url": "/settings"
-    },
-    {
-      "name": "AcInfos",
-      "type": "ACElement",
-      "value": "<a href=\"/_ac\">Infos</a>"
-    }
-  ]
-}
-)";
 
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
@@ -68,6 +37,15 @@ static const char Settings_Page[] PROGMEM = R"(
 #define MQTT_PREFIX "SPS/" HOSTNAME
 #define MQTT_TOPIC_HW MQTT_PREFIX "/HelloWorld"
 #define MQTT_TOPIC_JSON MQTT_PREFIX
+
+#include <secrets.h>
+#ifndef WIFI_SSID
+#define WIFI_SSID "Your WiFi SSID"
+#endif
+
+#ifndef WIFI_PASSWORD
+#define WIFI_PASSWORD "Your WiFi PASSWORD"
+#endif
 
 char hw_buf[JSON_BUFFER_SIZE];
 WiFiClient espClient;
@@ -100,7 +78,6 @@ void rootPage() {
         "<p>Druck: {Pres}</p>"
         "<p>Abstand: {Distance}</p>"
         "<p>WLAN: {WLAN}</p>"
-        "<p></p><p style=\"padding-top:15px;text-align:center\">" AUTOCONNECT_LINK(COG_24) "</p>"
         "</body>"
         "</html>";
 
@@ -145,38 +122,62 @@ void scan()
 }
 
 void reconnect()
-{
-	Serial.print("Attempting MQTT connection...");
-	// Attempt to connect
-	if (MqttClient.connect((HOSTNAME + WiFi.macAddress()).c_str()))
+{    
+    if (WiFi.status() != WL_CONNECTED)
     {
-		Serial.println("connected");
-		// Once connected, publish an announcement...
-		StaticJsonDocument<JSON_BUFFER_SIZE> hw_doc;
-		hw_doc["MAC"] = WiFi.macAddress();
-		hw_doc["IP"] = WiFi.localIP().toString();
-		hw_doc["Gateway"] = WiFi.gatewayIP().toString();
-        hw_doc["git"] = gitRevShort;
-		serializeJson(hw_doc, hw_buf, JSON_BUFFER_SIZE);
+        Serial.print("Attempting to connect to SSID: ");
+        Serial.println(WIFI_SSID);
+        WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+        int cnt = 0;
+        while (WiFi.status() != WL_CONNECTED)
+        {
+            delay(500);
+            Serial.print(".");
+            if (cnt++ > 20)
+                break;
+        }
+        if (WiFi.status() == WL_CONNECTED)
+        {
+            Serial.println("WiFi connected");
+            Serial.println("IP address: ");
+            Serial.println(WiFi.localIP());
+        }
+    }
+	
+    if (WiFi.status() == WL_CONNECTED)
+    {
+        if (!MqttClient.connected())
+        {
+            Serial.print("Attempting MQTT connection...");
+            // Attempt to connect
+            MqttClient.setServer(MQTT_BROKER, 1883);
+            MqttClient.connect((HOSTNAME + WiFi.macAddress()).c_str());
+            Serial.println("connected");
+            // Once connected, publish an announcement...
+            StaticJsonDocument<JSON_BUFFER_SIZE> hw_doc;
+            hw_doc["MAC"] = WiFi.macAddress();
+            hw_doc["IP"] = WiFi.localIP().toString();
+            hw_doc["Gateway"] = WiFi.gatewayIP().toString();
+            hw_doc["git"] = gitRevShort;
+            serializeJson(hw_doc, hw_buf, JSON_BUFFER_SIZE);
 
-		MqttClient.publish(MQTT_TOPIC_HW, hw_buf);
+            MqttClient.publish(MQTT_TOPIC_HW, hw_buf);
 
-		Values.WlanSignal = WiFi.RSSI();
-	}
-	else
-	{
-		Serial.print("failed, rc=");
-		Serial.print(MqttClient.state());
-	}
+            Values.WlanSignal = WiFi.RSSI();
+        }
+    }
 }
 
 // the setup function runs once when you press reset or power the board
 void setup()
 {
-    Serial.begin(115200);
+    Serial.begin(115200);    
 
 	Wire.begin();
 	scan();
+
+    Serial.println("=== WLAN Start ===");
+    reconnect();
 
     EnvSensorAktiv = bme.begin(0x76);
     // You can also pass in a Wire library object like &Wire2
@@ -189,6 +190,9 @@ void setup()
         Serial.print("   ID of 0x56-0x58 represents a BMP 280,\n");
         Serial.print("        ID of 0x60 represents a BME 280.\n");
         Serial.print("        ID of 0x61 represents a BME 680.\n");
+    }
+    else
+    {
 
         Values.Temp = bme.readTemperature();
         Values.Hum = bme.readHumidity();
@@ -202,22 +206,7 @@ void setup()
     ws2812fx.setBrightness(32);
     ws2812fx.setMode(FX_MODE_BREATH);
     ws2812fx.setColor(0, 0, 255);
-    ws2812fx.start();
-
-    Settings.load(FPSTR(Settings_Page));
-    Portal.join({ Settings });
-    Server.on("/", rootPage);
-    
-    Config.hostName = HOSTNAME;
-    Config.immediateStart = false;	//kein Wifi Verbindungsversuch
-    Config.portalTimeout = 100;  // It will time out in 0,1 second
-    Config.retainPortal = true;		//Portal bleibt vorhanden
-    Config.apid = "Weight-12345678";
-    Config.ota = AC_OTA_BUILTIN;	//Update Server
-    Config.homeUri = "/settings";
-    Config.bootUri = AC_ONBOOTURI_HOME;
-    Portal.config(Config);
-    Portal.begin();
+    ws2812fx.start();    
 
     Serial.println(gitRevision);
 
@@ -229,16 +218,19 @@ void loop()
 {
     if (EnvSensorAktiv)
     {
-        float buf  = bme.readTemperature();
-        Values.Temp = 0.8 * Values.Temp + 0.2 * buf;
+        //float buf  = bme.readTemperature();
+        Values.Temp = 0.8 * Values.Temp + 0.2 * bme.readTemperature();
         Values.Hum = 0.8 * Values.Hum + 0.2 * bme.readHumidity();
         Values.Pres = 0.8 * Values.Pres + 0.2 * (bme.readPressure() / 100.0);
 
-        Values.Distance = 0.8 * Values.Distance + 0.2 * distanceSensor.measureDistanceCm(buf);
+        //Values.Distance = 0.8 * Values.Distance + 0.2 * distanceSensor.measureDistanceCm(buf);
+        Values.Distance = 0.8 * Values.Distance + 0.2 * distanceSensor.measureDistanceCm();
     }
     else
         Values.Distance = 0.8 * Values.Distance + 0.2 * distanceSensor.measureDistanceCm();
 
+    Serial.print("Dist: ");
+    Serial.println(Values.Distance);
     if (Values.Distance < 10)
     {
         ws2812fx.setColor(0, 0, 255);   //Blau -> Fehlmessung        
@@ -252,16 +244,19 @@ void loop()
         ws2812fx.setColor(0, 255, 0);   //Grün alles okay
     }
 
+    reconnect();
+
     if (WiFi.status() == WL_CONNECTED)
-    {
-        if (!MqttClient.connected())
+    {        
+        if (MqttClient.connected())
         {
-            Serial.print("MQTT Server: ");
-            IPAddress ip;
-            Serial.println(WiFi.hostByName(MQTT_BROKER, ip));
-            Serial.println(ip);
-            MqttClient.setServer(ip, 1883);
-            reconnect();
+            if(ws2812fx.getMode() != FX_MODE_BREATH)
+                ws2812fx.setMode(FX_MODE_BREATH);
+        }
+        else
+        {
+            if (ws2812fx.getMode() != FX_MODE_LARSON_SCANNER)
+                ws2812fx.setMode(FX_MODE_LARSON_SCANNER);
         }
 
         Values.WlanSignal = 0.8 * Values.WlanSignal + 0.2 * WiFi.RSSI();
@@ -302,11 +297,17 @@ void loop()
 		else
 			PingCnt--;
     }
+    else
+    {
+        if (ws2812fx.getMode() != FX_MODE_LARSON_SCANNER)
+            ws2812fx.setMode(FX_MODE_LARSON_SCANNER);
+    }
 
     for (int i = 0;i < 900;i++)
     {
-        Portal.handleClient();
+        Server.handleClient();
         ws2812fx.service();
+        MqttClient.loop();
         delay(1);
     }
 }
